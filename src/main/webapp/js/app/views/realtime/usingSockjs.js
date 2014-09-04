@@ -8,17 +8,22 @@ define(function(require, d3) {
 		Backbone = require('backbone'),
 		sockjs = require('sockjs');
 
+	var ws;
+
 	return Backbone.View.extend({
+		events: {
+			'remove' : 'onClose'
+		},
 		render: function() {
 			this.$el.empty();
 			this.$el.removeClass();
 			this.$el.addClass('container-fluid');
-			
+
 			this.realtime();
 
-			return this; 
+			return this;
 		},
-		realtime : function() {
+		realtime: function() {
 			var url = "/socketjs/echo";
 			if (url.indexOf('socketjs') == -1) {
 				if (window.location.protocol == 'http:') {
@@ -27,13 +32,19 @@ define(function(require, d3) {
 					url = 'wss://' + window.location.host + url;
 				}
 			}
+			var timer;
 			var transports = [];
-			var ws = (url.indexOf('socketjs') != -1) ? new SockJS(url, undefined, {
-				protocols_whitelist : transports
+			ws = (url.indexOf('socketjs') != -1) ? new SockJS(url, undefined, {
+				protocols_whitelist: transports
 			}) : new WebSocket(url);
-			
+
 			ws.onopen = function(event) {
 				console.log('open');
+				console.log(timer);
+				if (timer != null) {
+					clearInterval(timer);
+				}
+				ws.send('message!');
 			};
 			ws.onclose = function(event) {
 				console.log('close');
@@ -44,12 +55,18 @@ define(function(require, d3) {
 			ws.onerror = function(event) {
 				console.log('error');
 			};
-			
-			setInterval(function() {
+
+			timer = setInterval(function() {
 				if (ws && ws.readyState === SockJS.OPEN) {
 					ws.send('message!');
 				}
 			}, 1000);
+		},
+		onClose: function() {
+			if (ws != null) {
+				ws.close();
+				ws = null;
+			}
 		}
 	});
 
